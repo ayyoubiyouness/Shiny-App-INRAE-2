@@ -1,6 +1,158 @@
+setwd("C:/Users/Youness/Desktop/R project/stage/shiny/test/www")
 server <- function(input, output, session) {
   
+  output$ressour_consom <- renderHighchart({
+    Sys.sleep(1.5)
+    hc <- data3_radio %>% 
+      hchart(
+        'column', hcaes(x = 'Date', y = 'points', group = 'year'),
+        stacking = "normal"
+      ) %>%
+      hc_colors(c("#0073C2FF", "#EFC000FF", "red"))%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
+    
+    hc
+    
+    
+  })
   
+  output$rangeland_consome <- renderHighchart({
+    Sys.sleep(1.5)
+    h1 <- highchart() %>% 
+      hc_xAxis(categories = data2_radio$Date) %>% 
+      hc_add_series(name = "Rangeland_ingested_mean", 
+                    data = data2_radio$mean) %>% 
+      hc_add_series(name = "Rangeland_ingested_min",
+                    data = data2_radio$min) %>%
+      hc_add_series(name = "Rangeland_ingested_max",
+                    data = data2_radio$max)%>%
+      hc_title(
+        text = "Ressources consommées par les animaux",
+        margin = 50,
+        # align = "centre",
+        style = list(color = "#22A884", useHTML = TRUE)
+      )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
+    
+    
+    
+    # Afficher le graphique
+    h1
+    
+  })
+  
+  
+  output$stade_physio <- renderHighchart({
+    Sys.sleep(1.5)
+    hc <- stadephysio %>%
+      hchart(
+        'bar', hcaes(x = parameters, y = value),
+        color = "lightgray", borderColor = "black"
+      )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
+    hc
+   
+  })
+  
+  output$ressource_surface <- renderHighchart({
+    Sys.sleep(1.5)
+    hc <- plot_man %>% 
+      hchart(
+        'column', hcaes(x = Surface, y = taille, color = Surface)
+      )  %>%
+      hc_title(
+        text = "Par type de ressource et par type d'usage ",
+        margin = 50,
+        # align = "centre",
+        style = list(color = "#22A884", useHTML = TRUE)
+      )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
+    
+    hc
+  })
+  
+  bins <- reactive({
+    input$radio
+    if (input$radio == 1) {
+      dataa <- mois(data_radio)
+    } else if ((input$radio == 2)) {
+      dataa <- saison(data_radio)
+    } else if ((input$radio == 3)) {
+      dataa <- quinzine(data_radio)
+    } else {
+      dataa <- data_radio
+    }
+    
+  })
+  output$plot <- renderHighchart({
+    Sys.sleep(1.5)
+    h1 <- highchart() %>% 
+      hc_xAxis(categories = bins()$Date) %>% 
+      hc_add_series(name = "Herd_Requirement_mean", 
+                    data = bins()$mean) %>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
+    
+    # Afficher le graphique
+    h1
+  })
+  
+  output$downloadData <- downloadHandler(
+    filename = function() { 
+      paste("dataset-", Sys.Date(), ".csv", sep="")
+    },
+    content = function(file) {
+      write.csv(bins(), file)
+    })
+  output$downloadPlot <- downloadHandler(
+    filename = function() { 
+      paste("dataset-", Sys.Date(), ".png", sep='')
+    },
+    content = function(file) {
+      png(file)
+      print(h1)
+      dev.off()
+    })
+  
+  
+  observeEvent(input$indperf, {
+    for(i in 1:30){
+      session$sendCustomMessage("anim", list(id = "grain_ingest", value = grain_ingest_par_fememlle))
+      session$sendCustomMessage("anim", list(id = "taux", value = taux_paturage))
+      session$sendCustomMessage("anim", list(id = "forage_ingest", value = forage_ingest_par_fememlle))
+    }
+  })
+  
+  
+  shinyjs::onclick("parentre",
+                   shinyjs::toggle(id = "par_entree", anim = TRUE))
+  shinyjs::onclick("parsortie",
+                   shinyjs::toggle(id = "par_sortie", anim = TRUE))
+  shinyjs::onclick("indperf",
+                   shinyjs::toggle(id = "indi_perfor", anim = TRUE))
+  
+  
+  output$home_img <- renderImage({
+    
+    list(src = "imgaccueil.jpg",
+         width = "100%",
+         height = 330)
+    
+  }, deleteFile = F)
   # Le serveur de la situation initiale
   output$approvalBox <- renderInfoBox({
     a2 <-  filter(biotech, parameters == "rate_morta_young")
@@ -34,13 +186,18 @@ troupeau sur une période donnée",
   })
   
   output$animated <- renderHighchart ({
+    Sys.sleep(1.5)
     hchart(
       data2,
       "item", 
       hcaes(name = parameters, y = value),
       name = "Nombre ",
       id = "serieid"
-    )
+    )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
   })
   
   observeEvent(input$item_rows, {
@@ -91,6 +248,7 @@ troupeau sur une période donnée",
   
   
   output$piechart <- renderPlotly({
+    Sys.sleep(1.5)
     fig <- plot_ly(dataa, labels = ~parameters, values = ~value, type = 'pie')
     fig <- fig %>% layout(title = 'Représentation des probabilités ',
                           xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
@@ -100,6 +258,7 @@ troupeau sur une période donnée",
     
   })
   output$donutchart <- renderPlotly({
+    Sys.sleep(1.5)
     data3 <- filter(biotech, parameters %in% c('time_first_MB', 'TimetoRenouv', 'time_to_sale_min', 'time_to_sale_max',
                                                'to_portee_2', 'to_portee_3', 'to_portee_4'))
     
@@ -230,10 +389,15 @@ troupeau sur une période donnée",
     
   })
   output$pie2 <- renderHighchart ({
+    Sys.sleep(1.5)
     hc <- dataa %>%
       hchart(
         "pie", hcaes(x = parameters, y = value),
         name = "Probabilité"
+      )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
       )
     
     hc
@@ -279,7 +443,11 @@ troupeau sur une période donnée",
       hcaes(name = parameters, y = value),
       name = "Nombre ",
       id = "serieid"
-    )
+    )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
+      )
   })
   
   
@@ -472,6 +640,10 @@ troupeau sur une période donnée",
       hchart(
         "pie", hcaes(x = parameters, y = value),
         name = "Probabilité"
+      )%>%
+      hc_exporting(
+        enabled = TRUE, # always enabled
+        filename = "custom-file-name"
       )
     
     hc
@@ -527,3 +699,4 @@ troupeau sur une période donnée",
 }
 
 shinyApp(ui = ui, server = server)
+  
